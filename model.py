@@ -247,6 +247,140 @@ class TransformerModel(object):
 
 		##### Your code here #####
 
+		dataset = GPT2Dataset(trainSet, self.tokenizer)
 
+		# Split into training and validation sets
+		train_size = int(0.9 * len(dataset))
+		val_size = len(dataset) - train_size
+
+		train_dataset, val_dataset = random_split(dataset, [train_size, val_size])
+
+		print('{:>5,} training samples'.format(train_size))
+		print('{:>5,} validation samples'.format(val_size))
+
+		train_dataloader = DataLoader(
+            train_dataset,  # The training samples.
+            sampler = RandomSampler(train_dataset), # Select batches randomly
+            batch_size = 1 # Trains with this batch size.
+        )
+
+		#print(next(iter(train_dataloader)))
+
+		validation_dataloader = DataLoader(
+            val_dataset, # The validation samples.
+            sampler = SequentialSampler(val_dataset), # Pull out batches sequentially.
+            batch_size = 1 # Evaluate with this batch size.
+        )
+
+		self.model.resize_token_embeddings(len(self.tokenizer))
+
+		seed_val = 42
+
+		random.seed(seed_val)
+		np.random.seed(seed_val)
+		torch.manual_seed(seed_val)
+		torch.cuda.manual_seed_all(seed_val)
+		
+
+
+		epochs = 10
+		learning_rate = 1e-4
+		warmup_steps = 1e2
+		epsilon = 1e-8
+		optimizer = torch.optim.AdamW(self.model.parameters(),
+								lr = learning_rate,
+								eps = epsilon
+								)
+
+		total_steps = len(train_dataloader) * epochs
+
+		scheduler = get_linear_schedule_with_warmup(optimizer, 
+													num_warmup_steps = warmup_steps, 
+													num_training_steps = total_steps)
+
+
+
+		training_stats = []
+
+		self.model = self.model
+
+		for epoch_i in range(0, epochs):
+
+			print("")
+			print('======== Epoch {:} / {:} ========'.format(epoch_i + 1, epochs))
+			print('Training...')
+			
+			total_train_loss = 0
+			
+			self.model.train()
+			
+			for step, batch in enumerate(train_dataloader):
+				print(step)
+				b_input_ids = batch[0]
+				b_labels = batch[0]
+				b_masks = batch[1]
+				
+				self.model.zero_grad()
+				
+				outputs = self.model(b_input_ids,
+                          		labels = b_labels, 
+                          		attention_mask = b_masks,
+                          		token_type_ids = None
+				)
+				loss = outputs[0]
+				
+				batch_loss = loss.item()
+				
+				total_train_loss += batch_loss
+					
+				loss.backward()
+				
+				optimizer.step()
+				
+				scheduler.step()
+				
+			# Calculate the average loss over all of the batches.
+			
+			avg_train_loss = total_train_loss / len(train_dataloader)
+			
+			print("")
+			
+			print("  Average training loss: {0:.2f}".format(avg_train_loss))
+
+			print("")
+			print("Running Validation...")
+    
+			self.model.eval()
+			
+			total_eval_loss = 0
+			
+			nb_eval_steps = 0
+
+    		# Evaluate data for one epoch
+			
+			for batch in validation_dataloader:
+				
+				b_input_ids = batch[0]
+				b_labels = batch[0]
+				b_masks = batch[1]
+				
+				with torch.no_grad():
+					outputs = self.model(b_input_ids,
+										attention_mask = b_masks,
+										labels = b_labels
+										)
+										
+					loss = outputs[0]
+				
+				batch_loss = loss.item()
+				
+				total_eval_loss += batch_loss
+				
+			avg_val_loss = total_eval_loss / len(validation_dataloader)
+			
+			print("  Validation Loss: {0:.2f}".format(avg_val_loss))
+
+
+		self.model
 
 		##### Code done #####
