@@ -50,15 +50,17 @@ class TransformerModel(object):
 		# 		   prompt + ' with another output placeholder.\n']
 
 		##### Code done #####
+		if len(prompt)>1024:
+			prompt = prompt[-1024:]
 		input_ids = self.tokenizer(prompt, return_tensors = self.framework).input_ids
 
 		if max_new_tokens == 2:
 			outputs = self.model.generate(input_ids,
 										pad_token_id = self.model.config.eos_token_id,
-										#do_sample = True,
+										do_sample = True,
 										no_repeat_ngram_size = 1,
-										#top_k = 1,
-										#penalty_alpha = 0.6,
+										top_k = 1,
+										penalty_alpha = 0.6,
 										temperature = 0.3,
 										max_new_tokens = max_new_tokens)
 
