@@ -1,1 +1,3 @@
 Text generation is the task of generating text with the goal of
+The state of Texas is famous for
+The weather prediction for today said that it will be 

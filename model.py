@@ -39,15 +39,43 @@ class TransformerModel(object):
 		"""
 
 		##### Your code here #####
-		if max_new_tokens == 2:
-			return prompt + 'positive'
+		# if max_new_tokens == 2:
+		# 	return prompt + 'positive'
 		
-		results = [prompt + ' with an output placeholder.\n', 
-				   prompt + ' with another output placeholder.\n']
+		# results = [prompt + ' with an output placeholder.\n', 
+		# 		   prompt + ' with another output placeholder.\n']
 
 		##### Code done #####
-		results = "\n".join(results)
+		input_ids = self.tokenizer(prompt, return_tensors = self.framework).input_ids
 
+		if max_new_tokens == 2:
+			outputs = self.model.generate(input_ids,
+										pad_token_id = self.model.config.eos_token_id,
+										#do_sample = True,
+										no_repeat_ngram_size = 1,
+										#top_k = 1,
+										#penalty_alpha = 0.6,
+										temperature = 0.3,
+										max_new_tokens = max_new_tokens)
+
+			result = self.tokenizer.decode(outputs[0], skip_special_tokens=True)
+			return result
+
+		outputs = self.model.generate(input_ids,
+										do_sample = True,
+										pad_token_id = self.model.config.eos_token_id,
+										no_repeat_ngram_size = 3,
+										top_p = 0.90,
+										temperature = 0.9,
+										num_beams = 5,
+										max_new_tokens = max_new_tokens, 
+										num_return_sequences = num_return_sequences)
+
+		results = ""
+		for i, sample_output in enumerate(outputs):
+			results += "\n\n\n"
+			results += "{}: {}".format(i, self.tokenizer.decode(sample_output, skip_special_tokens=True)) 
+			
 		return results
 
 
