@@ -59,9 +59,9 @@ class TransformerModel(object):
 										pad_token_id = self.model.config.eos_token_id,
 										do_sample = True,
 										no_repeat_ngram_size = 1,
+										temperature = 0.3,
 										top_k = 1,
 										penalty_alpha = 0.6,
-										temperature = 0.3,
 										max_new_tokens = max_new_tokens)
 
 			result = self.tokenizer.decode(outputs[0], skip_special_tokens=True)
@@ -71,10 +71,10 @@ class TransformerModel(object):
 										do_sample = True,
 										pad_token_id = self.model.config.eos_token_id,
 										no_repeat_ngram_size = 3,
-										top_p = 0.90,
-										temperature = 0.9,
 										num_beams = 5,
 										max_new_tokens = max_new_tokens, 
+										top_p = 0.90,
+										temperature = 0.9,
 										num_return_sequences = num_return_sequences)
 
 		results = ""
@@ -198,7 +198,30 @@ class TransformerModel(object):
 
 		##### Your code here #####
 
-		weights = np.random.rand(len(prompt.split()))
+		inputs = self.tokenizer.encode(prompt, return_tensors=self.framework)  # Tokenize input text
+		outputs = self.model(inputs.cuda())  # Run model
+		attention = outputs[layer]  # Retrieve attention from model outputs
+		tokens = self.tokenizer.convert_ids_to_tokens(inputs[0])
+		inputs_ = self.tokenizer.encode(' ', return_tensors='pt')  # Tokenize input text
+		tokens_ = self.tokenizer.convert_ids_to_tokens(inputs_[0])
+		#print(tokens_)
+		for i in range(len(tokens)):
+			if tokens_[0] in tokens[i]:
+				tokens[i]=tokens[i].replace(tokens_[0],'')
+
+		inputs_ = self.tokenizer.encode('\n', return_tensors='pt')  # Tokenize input text
+		tokens_ = self.tokenizer.convert_ids_to_tokens(inputs_[0])
+		#print(tokens_)
+		for i in range(len(tokens)):
+			if tokens_[0] in tokens[i]:
+				tokens[i]=tokens[i].replace(tokens_[0],'\n')
+		
+		i=3
+		weights=np.squeeze(np.mean(attention[1].cpu().detach().numpy(),axis=-1))
+		weights=np.mean(weights,axis=0)
+		weights=(weights-np.min(weights))/(np.max(weights)-np.min(weights))
+		print(weights.shape)
+		print(len(tokens))
 
 		##### Code done #####
 		assert len(prompt.split())==len(weights)
